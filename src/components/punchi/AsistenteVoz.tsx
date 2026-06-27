@@ -9,6 +9,7 @@ interface ResultadoInterpretado {
   monto: number;
   descripcion: string;
   categoria: "personal" | "negocio";
+  mensaje: string;
 }
 
 export function AsistenteVoz() {
@@ -81,13 +82,25 @@ export function AsistenteVoz() {
         return;
       }
 
+      if (datos.tipo === "pregunta") {
+        setEstado("error");
+        setMensajeError(datos.mensaje);
+        reproducirVoz(datos.mensaje);
+        return;
+      }
+
+      if (!datos.completo) {
+        // Falta un dato (ej. el monto): Punchi pregunta, y el usuario vuelve
+        // a tocar el micrófono para responder.
+        setEstado("error");
+        setMensajeError(datos.mensaje);
+        reproducirVoz(datos.mensaje);
+        return;
+      }
+
       setResultado(datos);
       setEstado("confirmando");
-      const frase =
-        datos.tipo === "venta"
-          ? `Vendiste ${datos.descripcion} por ${datos.monto} soles. ¿Está bien?`
-          : `Gastaste ${datos.monto} soles en ${datos.descripcion}. ¿Está bien?`;
-      reproducirVoz(frase);
+      reproducirVoz(datos.mensaje);
     };
 
     reconocimiento.onerror = () => {
@@ -177,13 +190,7 @@ export function AsistenteVoz() {
               S/ {resultado.monto.toFixed(2)}
             </p>
             <button
-              onClick={() =>
-                reproducirVoz(
-                  resultado.tipo === "venta"
-                    ? `Vendiste ${resultado.descripcion} por ${resultado.monto} soles. ¿Está bien?`
-                    : `Gastaste ${resultado.monto} soles en ${resultado.descripcion}. ¿Está bien?`
-                )
-              }
+              onClick={() => reproducirVoz(resultado.mensaje)}
               disabled={reproduciendo}
               className="block mx-auto mb-4 text-sm underline"
               style={{ color: "var(--color-marca)" }}

@@ -1,65 +1,94 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Interpreta una frase dictada por el usuario y la convierte en una accion
-// estructurada (venta o gasto). Version simple basada en palabras clave,
-// pensada para frases cortas y naturales como las que usaria nuestro usuario.
-// Fase 2: reemplazar por una llamada a un modelo de lenguaje para mayor
-// precision con frases mas variadas o con errores de transcripcion.
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const MODELO = "gemini-2.0-flash";
 
-const PALABRAS_GASTO = ["gasté", "gaste", "compré", "compre", "pagué", "pague", "gasto"];
-const PALABRAS_PERSONAL = ["personal", "para mi", "para mí", "mío", "mio"];
+const INSTRUCCIONES = `Eres Punchi, el asistente de ChambaPunche: una app que ayuda a pequenos
+vendedores informales en Peru a registrar sus ventas y gastos hablando de forma natural.
+
+Tu trabajo es leer lo que el usuario dijo (transcrito de audio, puede tener errores) y
+devolver SOLO un JSON con esta forma exacta, sin texto adicional, sin markdown:
+
+{
+  "tipo": "venta" | "gasto" | "pregunta" | "no_entendido",
+  "completo": boolean,
+  "monto": number o null,
+  "descripcion": string o null,
+  "categoria": "personal" | "negocio" o null,
+  "mensaje": string
+}
+
+Reglas:
+- "tipo" es "venta" si vendio algo, "gasto" si compro o pago algo, "pregunta" si esta
+  preguntando algo (ej. cuanto gane ayer), "no_entendido" si la frase no tiene sentido.
+- "completo" es true solo si ya tienes monto Y descripcion claros para venta o gasto.
+- Si falta el monto o la descripcion, "completo" es false, y "mensaje" debe ser una
+  pregunta corta y amable para pedir ese dato faltante (ej. Cuanto vendiste?).
+- NUNCA inventes un monto que el usuario no dijo. Si no dijo numero, monto es null.
+- Para gasto, "categoria" es "personal" si menciona que es para el/ella o su casa,
+  "negocio" en cualquier otro caso (por defecto).
+- Si "completo" es true, "mensaje" es una confirmacion corta y natural en espanol
+  peruano, ej: Vendiste 3 panes por 6 soles. Esta bien? o Gastaste 4 soles en harina. Esta bien?
+- Para "pregunta", responde brevemente en "mensaje" que todavia no puedes consultar el
+  historial, pero que pronto vas a poder.
+- Usa frases cortas, calidas, nunca tecnicas. Nunca regañes al usuario.`;
 
 export async function POST(req: NextRequest) {
-  const { texto } = await req.json();
-
-  if (!texto || typeof texto !== "string") {
-    return NextResponse.json({ error: "Texto vacío" }, { status: 400 });
+  if (!GEMINI_API_KEY) {
+    return NextResponse.json({ entendido: false, mensaje: "Falta configurar la IA." }, { status: 500 });
   }
 
-  const textoLimpio = texto.toLowerCase().trim();
+  const { texto } = await req.json();
+  if (!texto || typeof texto !== "string") {
+    return NextResponse.json({ entendido: false, mensaje: "No escuché nada." }, { status: 400 });
+  }
 
-  // Extrae el primer numero (con decimales opcionales) que aparezca
-  const coincidenciaMonto = textoLimpio.match(/(\d+(?:[.,]\d+)?)/);
-  if (!coincidenciaMonto) {
+  try {
+    const respuesta = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${INSTRUCCIONES}\n\nLo que dijo el usuario: "${texto}"` }] }],
+          generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
+        }),
+      }
+    );
+
+    if (!respuesta.ok) {
+      const detalle = await respuesta.text();
+      console.error("Gemini falló:", detalle);
+      return NextResponse.json(
+        { entendido: false, mensaje: "No pude pensarlo bien. Intenta otra vez." },
+        { status: 200 }
+      );
+    }
+
+    const datos = await respuesta.json();
+    const textoJson = datos.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textoJson) {
+      return NextResponse.json(
+        { entendido: false, mensaje: "No te entendí bien. ¿Puedes repetirlo?" },
+        { status: 200 }
+      );
+    }
+
+    const resultado = JSON.parse(textoJson);
+
+    if (resultado.tipo === "no_entendido" || !resultado.tipo) {
+      return NextResponse.json(
+        { entendido: false, mensaje: resultado.mensaje || "No te entendí bien, ¿puedes repetirlo?" },
+        { status: 200 }
+      );
+    }
+
+    return NextResponse.json({ entendido: true, ...resultado });
+  } catch (error) {
+    console.error("Error interpretando con Gemini:", error);
     return NextResponse.json(
-      { entendido: false, mensaje: "No escuché ningún monto. ¿Puedes repetirlo con un número?" },
+      { entendido: false, mensaje: "Tuve un problema pensando. Intenta otra vez." },
       { status: 200 }
     );
   }
-  const monto = parseFloat(coincidenciaMonto[1].replace(",", "."));
-
-  const esGasto = PALABRAS_GASTO.some((p) => textoLimpio.includes(p));
-  const tipo: "venta" | "gasto" = esGasto ? "gasto" : "venta";
-
-  const categoria: "personal" | "negocio" = PALABRAS_PERSONAL.some((p) => textoLimpio.includes(p))
-    ? "personal"
-    : "negocio";
-
-  // La descripcion es el texto sin el monto ni las palabras de accion,
-  // recortado a algo legible.
-  let descripcion = textoLimpio
-    .replace(coincidenciaMonto[1], "")
-    .replace(/soles|sol|s\/\.?/g, "")
-    .replace(/vendí|vendi|gasté|gaste|compré|compre|pagué|pague|en|de|por|a|el|la|los|las/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!descripcion) descripcion = tipo === "venta" ? "una venta" : "un gasto";
-
-  // Si el reconocimiento de voz salió muy fragmentado (palabras sueltas de
-  // 1-2 letras), es señal de que no entendió bien. Mejor una descripción
-  // genérica que un texto confuso que el usuario no va a reconocer.
-  const palabras = descripcion.split(" ").filter(Boolean);
-  const palabrasCortas = palabras.filter((p) => p.length <= 2).length;
-  if (palabras.length > 3 && palabrasCortas / palabras.length > 0.4) {
-    descripcion = tipo === "venta" ? "una venta" : "un gasto";
-  }
-
-  return NextResponse.json({
-    entendido: true,
-    tipo,
-    monto,
-    descripcion,
-    categoria,
-  });
 }
