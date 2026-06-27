@@ -46,6 +46,15 @@ export async function POST(req: NextRequest) {
 
   if (!descripcion) descripcion = tipo === "venta" ? "una venta" : "un gasto";
 
+  // Si el reconocimiento de voz salió muy fragmentado (palabras sueltas de
+  // 1-2 letras), es señal de que no entendió bien. Mejor una descripción
+  // genérica que un texto confuso que el usuario no va a reconocer.
+  const palabras = descripcion.split(" ").filter(Boolean);
+  const palabrasCortas = palabras.filter((p) => p.length <= 2).length;
+  if (palabras.length > 3 && palabrasCortas / palabras.length > 0.4) {
+    descripcion = tipo === "venta" ? "una venta" : "un gasto";
+  }
+
   return NextResponse.json({
     entendido: true,
     tipo,

@@ -17,19 +17,27 @@ export function AsistenteVoz() {
   const [mensajeError, setMensajeError] = useState("");
   const reconocimientoRef = useRef<any>(null);
 
+  const [reproduciendo, setReproduciendo] = useState(false);
+
   async function reproducirVoz(texto: string) {
+    setReproduciendo(true);
     try {
       const res = await fetch("/api/voz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ texto }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.error("Error de voz:", await res.text());
+        return;
+      }
       const blob = await res.blob();
       const audio = new Audio(URL.createObjectURL(blob));
-      audio.play();
-    } catch {
-      // Si la voz falla, seguimos igual con la confirmación visual.
+      await audio.play().catch((e) => console.error("Bloqueo de autoplay:", e));
+    } catch (e) {
+      console.error("Error de voz:", e);
+    } finally {
+      setReproduciendo(false);
     }
   }
 
@@ -155,11 +163,25 @@ export function AsistenteVoz() {
             </p>
             <p className="text-center text-lg font-medium mb-1">{resultado.descripcion}</p>
             <p
-              className="text-center text-3xl font-bold mb-4"
+              className="text-center text-3xl font-bold mb-2"
               style={{ color: resultado.tipo === "venta" ? "var(--color-ingreso)" : "var(--color-gasto)" }}
             >
               S/ {resultado.monto.toFixed(2)}
             </p>
+            <button
+              onClick={() =>
+                reproducirVoz(
+                  resultado.tipo === "venta"
+                    ? `Vendiste ${resultado.descripcion} por ${resultado.monto} soles. ¿Está bien?`
+                    : `Gastaste ${resultado.monto} soles en ${resultado.descripcion}. ¿Está bien?`
+                )
+              }
+              disabled={reproduciendo}
+              className="block mx-auto mb-4 text-sm underline"
+              style={{ color: "var(--color-marca)" }}
+            >
+              {reproduciendo ? "Hablando..." : "🔊 Escuchar de nuevo"}
+            </button>
             <div className="flex gap-3">
               <button
                 onClick={cancelar}
