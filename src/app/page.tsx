@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TarjetaGanancia } from "@/components/punchi/TarjetaGanancia";
-import { BotonVoz } from "@/components/punchi/BotonVoz";
+import { AsistenteVoz } from "@/components/punchi/AsistenteVoz";
 
 // Datos de prueba mientras conectamos Firestore de verdad.
 const ventasDePrueba = [
@@ -88,7 +88,7 @@ export default function PantallaPrincipal() {
         </div>
       </section>
 
-      <BotonVoz />
+      <AsistenteVoz />
     </main>
   );
 }
