@@ -8,6 +8,7 @@ import { aFecha, esMismoDia, ultimosSieteDias } from "@/lib/calculos";
 import { TarjetaGanancia } from "@/components/punchi/TarjetaGanancia";
 import { GraficoSemana } from "@/components/punchi/GraficoSemana";
 import { AsistenteVoz } from "@/components/punchi/AsistenteVoz";
+import { BarraNavegacion } from "@/components/punchi/BarraNavegacion";
 import type { Venta, Gasto } from "@/types";
 
 export default function PantallaPrincipal() {
@@ -59,7 +60,7 @@ export default function PantallaPrincipal() {
   const hayAlgunaVez = ventas.length > 0 || gastos.length > 0;
 
   return (
-    <main className="min-h-screen px-4 py-6 max-w-md mx-auto">
+    <main className="min-h-screen px-4 py-6 max-w-md mx-auto pb-24">
       <header className="mb-5">
         <p className="text-lg" style={{ opacity: 0.7 }}>Hola, Ariana</p>
       </header>
@@ -129,6 +130,7 @@ export default function PantallaPrincipal() {
       </section>
 
       <AsistenteVoz />
+      <BarraNavegacion />
     </main>
   );
 }
