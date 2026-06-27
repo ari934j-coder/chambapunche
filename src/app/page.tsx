@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TarjetaGanancia } from "@/components/punchi/TarjetaGanancia";
+import { GraficoSemana } from "@/components/punchi/GraficoSemana";
 import { AsistenteVoz } from "@/components/punchi/AsistenteVoz";
 
 // Datos de prueba mientras conectamos Firestore de verdad.
@@ -10,6 +11,18 @@ const ventasDePrueba = [
 
 const gastosDePrueba = [
   { id: "1", descripcion: "Harina", monto: 4, categoria: "negocio" as const, hora: "8:00 am" },
+];
+
+// Datos de prueba del resumen semanal, hasta que calculemos esto de verdad
+// a partir del historial real guardado en Firestore.
+const semanaDePrueba = [
+  { etiqueta: "Lun", monto: 22 },
+  { etiqueta: "Mar", monto: 18 },
+  { etiqueta: "Mié", monto: 35 },
+  { etiqueta: "Jue", monto: 15 },
+  { etiqueta: "Vie", monto: 28 },
+  { etiqueta: "Sáb", monto: 40 },
+  { etiqueta: "Dom", monto: 29 },
 ];
 
 export default function PantallaPrincipal() {
@@ -47,6 +60,8 @@ export default function PantallaPrincipal() {
           </p>
         </button>
       </div>
+
+      <GraficoSemana dias={semanaDePrueba} />
 
       <section className="mt-6">
         <h2 className="text-base font-semibold mb-2" style={{ opacity: 0.8 }}>
