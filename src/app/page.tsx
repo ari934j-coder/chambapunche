@@ -1,35 +1,62 @@
+"use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { USUARIO_PRUEBA_ID } from "@/lib/registros";
+import { aFecha, esMismoDia, ultimosSieteDias } from "@/lib/calculos";
 import { TarjetaGanancia } from "@/components/punchi/TarjetaGanancia";
 import { GraficoSemana } from "@/components/punchi/GraficoSemana";
 import { AsistenteVoz } from "@/components/punchi/AsistenteVoz";
-
-// Datos de prueba mientras conectamos Firestore de verdad.
-const ventasDePrueba = [
-  { id: "1", descripcion: "3 panes", monto: 6, hora: "9:40 am" },
-  { id: "2", descripcion: "1 gaseosa", monto: 3.5, hora: "11:10 am" },
-];
-
-const gastosDePrueba = [
-  { id: "1", descripcion: "Harina", monto: 4, categoria: "negocio" as const, hora: "8:00 am" },
-];
-
-// Datos de prueba del resumen semanal, hasta que calculemos esto de verdad
-// a partir del historial real guardado en Firestore.
-const semanaDePrueba = [
-  { etiqueta: "Lun", monto: 22 },
-  { etiqueta: "Mar", monto: 18 },
-  { etiqueta: "Mié", monto: 35 },
-  { etiqueta: "Jue", monto: 15 },
-  { etiqueta: "Vie", monto: 28 },
-  { etiqueta: "Sáb", monto: 40 },
-  { etiqueta: "Dom", monto: 29 },
-];
+import type { Venta, Gasto } from "@/types";
 
 export default function PantallaPrincipal() {
-  const totalVentas = ventasDePrueba.reduce((acc, v) => acc + v.monto, 0);
-  const totalGastos = gastosDePrueba
+  const [ventas, setVentas] = useState<(Venta & { id: string })[]>([]);
+  const [gastos, setGastos] = useState<(Gasto & { id: string })[]>([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    const qVentas = query(collection(db, "ventas"), where("usuarioId", "==", USUARIO_PRUEBA_ID));
+    const qGastos = query(collection(db, "gastos"), where("usuarioId", "==", USUARIO_PRUEBA_ID));
+
+    const unsubVentas = onSnapshot(qVentas, (snap) => {
+      setVentas(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Venta, "id">) })));
+      setCargando(false);
+    });
+    const unsubGastos = onSnapshot(qGastos, (snap) => {
+      setGastos(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Gasto, "id">) })));
+    });
+
+    return () => {
+      unsubVentas();
+      unsubGastos();
+    };
+  }, []);
+
+  const hoy = new Date();
+  const ventasHoy = ventas.filter((v) => esMismoDia(aFecha(v.creadoEn as any), hoy));
+  const gastosHoy = gastos.filter((g) => esMismoDia(aFecha(g.creadoEn as any), hoy));
+
+  const totalVentasHoy = ventasHoy.reduce((acc, v) => acc + v.monto, 0);
+  const totalGastosNegocioHoy = gastosHoy
     .filter((g) => g.categoria === "negocio")
     .reduce((acc, g) => acc + g.monto, 0);
+
+  const semana = ultimosSieteDias().map(({ etiqueta, fecha }) => {
+    const ventasDia = ventas.filter((v) => esMismoDia(aFecha(v.creadoEn as any), fecha));
+    const gastosDia = gastos.filter(
+      (g) => g.categoria === "negocio" && esMismoDia(aFecha(g.creadoEn as any), fecha)
+    );
+    const totalVentasDia = ventasDia.reduce((acc, v) => acc + v.monto, 0);
+    const totalGastosDia = gastosDia.reduce((acc, g) => acc + g.monto, 0);
+    return { etiqueta, monto: Math.max(totalVentasDia - totalGastosDia, 0) };
+  });
+
+  const movimientosHoy = [...ventasHoy, ...gastosHoy].sort(
+    (a, b) => aFecha(b.creadoEn as any).getTime() - aFecha(a.creadoEn as any).getTime()
+  );
+
+  const hayAlgunaVez = ventas.length > 0 || gastos.length > 0;
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-md mx-auto">
@@ -37,7 +64,7 @@ export default function PantallaPrincipal() {
         <p className="text-lg" style={{ opacity: 0.7 }}>Hola, Ariana</p>
       </header>
 
-      <TarjetaGanancia totalVentas={totalVentas} totalGastos={totalGastos} />
+      <TarjetaGanancia totalVentas={totalVentasHoy} totalGastos={totalGastosNegocioHoy} />
 
       <div className="grid grid-cols-2 gap-3 mt-4">
         <Link
@@ -61,45 +88,43 @@ export default function PantallaPrincipal() {
         </button>
       </div>
 
-      <GraficoSemana dias={semanaDePrueba} />
+      {hayAlgunaVez && <GraficoSemana dias={semana} />}
 
       <section className="mt-6">
         <h2 className="text-base font-semibold mb-2" style={{ opacity: 0.8 }}>
           Hoy
         </h2>
+        {cargando && <p style={{ opacity: 0.6 }}>Cargando...</p>}
+        {!cargando && movimientosHoy.length === 0 && (
+          <p style={{ opacity: 0.6 }}>Todavía no registraste nada hoy.</p>
+        )}
         <div className="flex flex-col gap-2">
-          {ventasDePrueba.map((v) => (
-            <div
-              key={v.id}
-              className="rounded-xl p-3 flex justify-between items-center"
-              style={{ backgroundColor: "var(--color-tarjeta)", border: "1px solid var(--color-borde)" }}
-            >
-              <div>
-                <p className="font-medium">{v.descripcion}</p>
-                <p className="text-xs" style={{ opacity: 0.6 }}>{v.hora}</p>
-              </div>
-              <p className="font-semibold" style={{ color: "var(--color-ingreso)" }}>
-                +S/ {v.monto.toFixed(2)}
-              </p>
-            </div>
-          ))}
-          {gastosDePrueba.map((g) => (
-            <div
-              key={g.id}
-              className="rounded-xl p-3 flex justify-between items-center"
-              style={{ backgroundColor: "var(--color-tarjeta)", border: "1px solid var(--color-borde)" }}
-            >
-              <div>
-                <p className="font-medium">{g.descripcion}</p>
-                <p className="text-xs" style={{ opacity: 0.6 }}>
-                  {g.hora} · {g.categoria === "negocio" ? "Del negocio" : "Personal"}
+          {movimientosHoy.map((m) => {
+            const esVenta = "origen" in m && !("categoria" in m);
+            const fecha = aFecha(m.creadoEn as any);
+            const hora = fecha.toLocaleTimeString("es-PE", { hour: "numeric", minute: "2-digit" });
+            return (
+              <div
+                key={m.id}
+                className="rounded-xl p-3 flex justify-between items-center"
+                style={{ backgroundColor: "var(--color-tarjeta)", border: "1px solid var(--color-borde)" }}
+              >
+                <div>
+                  <p className="font-medium">{m.descripcion}</p>
+                  <p className="text-xs" style={{ opacity: 0.6 }}>
+                    {hora}
+                    {!esVenta && ` · ${(m as Gasto).categoria === "negocio" ? "Del negocio" : "Personal"}`}
+                  </p>
+                </div>
+                <p
+                  className="font-semibold"
+                  style={{ color: esVenta ? "var(--color-ingreso)" : "var(--color-gasto)" }}
+                >
+                  {esVenta ? "+" : "-"}S/ {m.monto.toFixed(2)}
                 </p>
               </div>
-              <p className="font-semibold" style={{ color: "var(--color-gasto)" }}>
-                -S/ {g.monto.toFixed(2)}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
