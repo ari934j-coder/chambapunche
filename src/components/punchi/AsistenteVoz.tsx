@@ -18,9 +18,11 @@ export function AsistenteVoz() {
   const reconocimientoRef = useRef<any>(null);
 
   const [reproduciendo, setReproduciendo] = useState(false);
+  const [errorVoz, setErrorVoz] = useState("");
 
   async function reproducirVoz(texto: string) {
     setReproduciendo(true);
+    setErrorVoz("");
     try {
       const res = await fetch("/api/voz", {
         method: "POST",
@@ -28,14 +30,20 @@ export function AsistenteVoz() {
         body: JSON.stringify({ texto }),
       });
       if (!res.ok) {
-        console.error("Error de voz:", await res.text());
+        const detalle = await res.text();
+        console.error("Error de voz:", detalle);
+        setErrorVoz(`No pude hablar (código ${res.status}). ${detalle.slice(0, 120)}`);
         return;
       }
       const blob = await res.blob();
       const audio = new Audio(URL.createObjectURL(blob));
-      await audio.play().catch((e) => console.error("Bloqueo de autoplay:", e));
+      await audio.play().catch((e) => {
+        console.error("Bloqueo de autoplay:", e);
+        setErrorVoz("Tu navegador bloqueó el audio automático. Toca 'Escuchar de nuevo'.");
+      });
     } catch (e) {
       console.error("Error de voz:", e);
+      setErrorVoz("No pude conectar con la voz. Revisa tu internet.");
     } finally {
       setReproduciendo(false);
     }
@@ -182,6 +190,11 @@ export function AsistenteVoz() {
             >
               {reproduciendo ? "Hablando..." : "🔊 Escuchar de nuevo"}
             </button>
+            {errorVoz && (
+              <p className="text-xs text-center mb-3" style={{ color: "var(--color-gasto)" }}>
+                {errorVoz}
+              </p>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={cancelar}
