@@ -9,6 +9,7 @@ import { TarjetaGanancia } from "@/components/punchi/TarjetaGanancia";
 import { GraficoSemana } from "@/components/punchi/GraficoSemana";
 import { AsistenteVoz } from "@/components/punchi/AsistenteVoz";
 import { BarraNavegacion } from "@/components/punchi/BarraNavegacion";
+import { IconoPunchi } from "@/components/punchi/IconoPunchi";
 import type { Venta, Gasto } from "@/types";
 
 export default function PantallaPrincipal() {
@@ -61,7 +62,8 @@ export default function PantallaPrincipal() {
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-md mx-auto pb-24">
-      <header className="mb-5">
+      <header className="mb-5 flex items-center gap-3">
+        <IconoPunchi size={44} />
         <p className="text-lg" style={{ opacity: 0.7 }}>Hola, Ariana</p>
       </header>
 
@@ -78,7 +80,8 @@ export default function PantallaPrincipal() {
             Registrar venta
           </p>
         </Link>
-        <button
+        <Link
+          href="/registrar-gasto"
           className="rounded-2xl p-4 text-left shadow-sm"
           style={{ backgroundColor: "var(--color-gasto-bg)" }}
         >
@@ -86,7 +89,7 @@ export default function PantallaPrincipal() {
           <p className="font-semibold mt-1" style={{ color: "var(--color-gasto)" }}>
             Registrar gasto
           </p>
-        </button>
+        </Link>
       </div>
 
       {hayAlgunaVez && <GraficoSemana dias={semana} />}

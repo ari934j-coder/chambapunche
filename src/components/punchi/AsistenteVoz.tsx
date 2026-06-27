@@ -156,7 +156,7 @@ export function AsistenteVoz() {
         onClick={iniciarEscucha}
         disabled={estado !== "inactivo" && estado !== "error"}
         aria-label="Hablar con Punchi para registrar una venta o gasto"
-        className="fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-white text-2xl"
+        className="fixed bottom-24 right-6 w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-white text-2xl z-50"
         style={{
           backgroundColor: estado === "escuchando" ? "var(--color-ingreso)" : "var(--color-marca)",
         }}
@@ -166,7 +166,7 @@ export function AsistenteVoz() {
 
       {(estado === "escuchando" || estado === "procesando") && (
         <div
-          className="fixed bottom-28 right-6 max-w-xs rounded-xl p-3 shadow-md text-sm"
+          className="fixed bottom-44 right-6 max-w-xs rounded-xl p-3 shadow-md text-sm z-50"
           style={{ backgroundColor: "var(--color-tarjeta)", border: "1px solid var(--color-borde)" }}
         >
           {estado === "escuchando" ? "Te escucho..." : "Un momento..."}
@@ -224,7 +224,7 @@ export function AsistenteVoz() {
 
       {estado === "error" && (
         <div
-          className="fixed bottom-28 right-6 max-w-xs rounded-xl p-3 shadow-md text-sm"
+          className="fixed bottom-44 right-6 max-w-xs rounded-xl p-3 shadow-md text-sm z-50"
           style={{ backgroundColor: "var(--color-gasto-bg)", color: "var(--color-gasto)" }}
         >
           {mensajeError}

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { BarraNavegacion } from "@/components/punchi/BarraNavegacion";
+import { IconoPunchi } from "@/components/punchi/IconoPunchi";
 import { useVozPunchi } from "@/lib/useVozPunchi";
 
 const CONCEPTOS = [
@@ -36,9 +37,12 @@ export default function PantallaAprender() {
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-md mx-auto pb-24">
-      <header className="mb-5">
-        <h1 className="text-xl font-bold">Aprender</h1>
-        <p style={{ opacity: 0.7 }}>Ideas cortas para entender mejor tu plata</p>
+      <header className="mb-5 flex items-center gap-3">
+        <IconoPunchi size={44} />
+        <div>
+          <h1 className="text-xl font-bold">Aprender</h1>
+          <p style={{ opacity: 0.7 }}>Ideas cortas para entender mejor tu plata</p>
+        </div>
       </header>
 
       <div className="flex flex-col gap-2">
