@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { BarraNavegacion } from "@/components/punchi/BarraNavegacion";
+import { useVozPunchi } from "@/lib/useVozPunchi";
 
 const CONCEPTOS = [
   {
@@ -31,6 +32,7 @@ const CONCEPTOS = [
 
 export default function PantallaAprender() {
   const [abierto, setAbierto] = useState<number | null>(null);
+  const { reproducirVoz, reproduciendo } = useVozPunchi();
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-md mx-auto pb-24">
@@ -43,25 +45,37 @@ export default function PantallaAprender() {
         {CONCEPTOS.map((c, i) => {
           const estaAbierto = abierto === i;
           return (
-            <button
+            <div
               key={c.titulo}
-              onClick={() => setAbierto(estaAbierto ? null : i)}
-              className="text-left rounded-xl p-4"
+              className="rounded-xl p-4"
               style={{ backgroundColor: "var(--color-tarjeta)", border: "1px solid var(--color-borde)" }}
             >
-              <div className="flex justify-between items-center">
+              <button
+                onClick={() => setAbierto(estaAbierto ? null : i)}
+                className="w-full text-left flex justify-between items-center"
+              >
                 <div>
                   <p className="font-semibold">{c.titulo}</p>
                   <p className="text-sm" style={{ opacity: 0.6 }}>{c.resumen}</p>
                 </div>
                 <span style={{ opacity: 0.5 }}>{estaAbierto ? "▲" : "▼"}</span>
-              </div>
+              </button>
               {estaAbierto && (
-                <p className="text-sm mt-3 p-3 rounded-lg" style={{ backgroundColor: "var(--color-marca-suave)" }}>
-                  {c.explicacion}
-                </p>
+                <>
+                  <p className="text-sm mt-3 p-3 rounded-lg" style={{ backgroundColor: "var(--color-marca-suave)" }}>
+                    {c.explicacion}
+                  </p>
+                  <button
+                    onClick={() => reproducirVoz(c.explicacion)}
+                    disabled={reproduciendo}
+                    className="mt-2 text-sm underline"
+                    style={{ color: "var(--color-marca)", minHeight: 44 }}
+                  >
+                    {reproduciendo ? "Hablando..." : "🔊 Escuchar"}
+                  </button>
+                </>
               )}
-            </button>
+            </div>
           );
         })}
       </div>

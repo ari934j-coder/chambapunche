@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useVozPunchi } from "@/lib/useVozPunchi";
 
 export function TarjetaGanancia({
   totalVentas,
@@ -9,7 +10,12 @@ export function TarjetaGanancia({
   totalGastos: number;
 }) {
   const [mostrarExplicacion, setMostrarExplicacion] = useState(false);
+  const { reproducirVoz, reproduciendo } = useVozPunchi();
   const ganancia = totalVentas - totalGastos;
+
+  const explicacion = `Esto se llama margen bruto: es lo que ganaste vendiendo, ${totalVentas.toFixed(
+    2
+  )} soles, menos lo que gastaste en tu negocio, ${totalGastos.toFixed(2)} soles. Es la plata que realmente es tuya hoy.`;
 
   return (
     <div
@@ -30,11 +36,19 @@ export function TarjetaGanancia({
         después de tus costos (¿qué es esto?)
       </button>
       {mostrarExplicacion && (
-        <p className="text-sm mt-2 p-3 rounded-lg" style={{ backgroundColor: "var(--color-marca-suave)" }}>
-          Esto se llama <strong>margen bruto</strong>: es lo que ganaste vendiendo
-          (S/ {totalVentas.toFixed(2)}) menos lo que gastaste en tu negocio
-          (S/ {totalGastos.toFixed(2)}). Es la plata que realmente es tuya hoy.
-        </p>
+        <>
+          <p className="text-sm mt-2 p-3 rounded-lg" style={{ backgroundColor: "var(--color-marca-suave)" }}>
+            {explicacion}
+          </p>
+          <button
+            onClick={() => reproducirVoz(explicacion)}
+            disabled={reproduciendo}
+            className="mt-2 text-sm underline"
+            style={{ color: "var(--color-marca)", minHeight: 44 }}
+          >
+            {reproduciendo ? "Hablando..." : "🔊 Escuchar"}
+          </button>
+        </>
       )}
     </div>
   );
