@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       const detalle = await respuesta.text();
       console.error("Gemini falló:", detalle);
       return NextResponse.json(
-        { entendido: false, mensaje: "No pude pensarlo bien. Intenta otra vez." },
+        { entendido: false, mensaje: `No pude pensarlo bien. (${respuesta.status}) ${detalle.slice(0, 200)}` },
         { status: 200 }
       );
     }
