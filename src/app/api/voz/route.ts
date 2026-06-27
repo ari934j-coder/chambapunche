@@ -3,10 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 // Esta clave nunca se expone al navegador: vive solo aqui, en el servidor.
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 
-// Voz de la biblioteca de ElevenLabs. Cambia este ID por el de la voz que
-// elija el equipo (ej. "Carolina" o "Mario") cuando se decida el tono final
-// de Punchi. Este es un ID de ejemplo de una voz multilingue.
-const VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
+// Voz de Martina, elegida por el equipo para Punchi.
+const VOICE_ID = "jw1XYij1FCiI9FENSxIf";
 
 export async function POST(req: NextRequest) {
   if (!ELEVENLABS_API_KEY) {
