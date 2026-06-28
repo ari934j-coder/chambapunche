@@ -20,6 +20,7 @@ export function AsistenteVoz() {
 
   const [reproduciendo, setReproduciendo] = useState(false);
   const [errorVoz, setErrorVoz] = useState("");
+  const huboResultadoRef = useRef(false);
 
   async function reproducirVoz(texto: string) {
     setReproduciendo(true);
@@ -64,8 +65,10 @@ export function AsistenteVoz() {
     reconocimiento.lang = "es-PE";
     reconocimiento.interimResults = false;
     reconocimiento.maxAlternatives = 1;
+    huboResultadoRef.current = false;
 
     reconocimiento.onresult = async (event: any) => {
+      huboResultadoRef.current = true;
       const texto = event.results[0][0].transcript;
       setEstado("procesando");
       const res = await fetch("/api/interpretar-voz", {
@@ -104,17 +107,31 @@ export function AsistenteVoz() {
     };
 
     reconocimiento.onerror = () => {
+      huboResultadoRef.current = true;
       setEstado("error");
       setMensajeError("No pude escucharte bien. Intenta otra vez en un lugar con menos ruido.");
     };
 
     reconocimiento.onend = () => {
-      if (estado === "escuchando") setEstado("inactivo");
+      // Si terminó de escuchar sin que onresult ni onerror se dispararan
+      // (ej. silencio total, o terminó sin detectar habla), antes se quedaba
+      // trabado para siempre. Ahora siempre vuelve a estar disponible.
+      if (!huboResultadoRef.current) {
+        setEstado("inactivo");
+      }
     };
 
     reconocimientoRef.current = reconocimiento;
     setEstado("escuchando");
     reconocimiento.start();
+
+    // Seguro adicional: si en 10 segundos no pasó nada (ej. el navegador
+    // nunca disparó ningún evento), liberamos el botón igual.
+    setTimeout(() => {
+      if (!huboResultadoRef.current) {
+        setEstado((actual) => (actual === "escuchando" ? "inactivo" : actual));
+      }
+    }, 10000);
   }
 
   async function confirmar() {
